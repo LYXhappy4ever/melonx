@@ -61,8 +61,11 @@ jobs:
       - name: Build unsigned MeloNX app
         shell: bash
         run: |
-          set -euo pipefail
+          set -uo pipefail
           rm -rf "$DERIVED_DATA_PATH"
+          mkdir -p build/diagnostics
+
+          set +e
           xcodebuild \
             -project "$XCODE_PROJECT" \
             -scheme "$XCODE_SCHEME" \
@@ -70,13 +73,39 @@ jobs:
             -sdk iphoneos \
             -destination "generic/platform=iOS" \
             -derivedDataPath "$DERIVED_DATA_PATH" \
+            -resultBundlePath build/diagnostics/MeloNX.xcresult \
             clean build \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
             DEVELOPMENT_TEAM="" \
             AD_HOC_CODE_SIGNING_ALLOWED=YES \
-            ONLY_ACTIVE_ARCH=NO
+            ONLY_ACTIVE_ARCH=NO 2>&1 | tee build/diagnostics/xcodebuild.log
+          xcode_status=${PIPESTATUS[0]}
+          set -e
+
+          if [ "$xcode_status" -ne 0 ]; then
+            error_lines="$(grep -Ei 'error:|fatal error:' build/diagnostics/xcodebuild.log | tail -n 20 || true)"
+            if [ -n "$error_lines" ]; then
+              while IFS= read -r line; do
+                safe_line="$(printf '%s' "$line" | sed 's/%/%25/g')"
+                echo "::error title=Xcode build error::$safe_line"
+              done <<< "$error_lines"
+            else
+              echo "::error title=Xcode build failed::xcodebuild exited with status $xcode_status; inspect the diagnostic artifact."
+            fi
+            exit "$xcode_status"
+          fi
+
+      - name: Upload Xcode diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MeloNX-2.6-AB0-xcode-diagnostics
+          path: |
+            build/diagnostics/xcodebuild.log
+            build/diagnostics/MeloNX.xcresult
+          if-no-files-found: warn
 
       - name: Verify and package IPA
         shell: bash
