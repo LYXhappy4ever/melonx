@@ -136,6 +136,6 @@ class LaunchGameHandler: ObservableObject {
         }
         
         let supportsArgumentBuffersTier2 = device.argumentBuffersSupport.rawValue >= MTLArgumentBuffersTier.tier2.rawValue
-        setenv("MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS", supportsArgumentBuffersTier2 ? "1" : "0", 1)
+        setenv("MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS", "0", 1)
     }
 }
