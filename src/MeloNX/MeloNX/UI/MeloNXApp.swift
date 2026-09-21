@@ -32,11 +32,9 @@ var environment: [EnvironmentVariable] = [
 
 
 func initEnvironmentVariables() {
-    if let device = MTLCreateSystemDefaultDevice(), device.argumentBuffersSupport.rawValue < MTLArgumentBuffersTier.tier2.rawValue {
-        environment.append(contentsOf: [
-            .init(string: "MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS", value: "0")
-        ])
-    }
+    environment.append(contentsOf: [
+        .init(string: "MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS", value: "0")
+    ])
     
     if #available(iOS 19, *) {
         environment.append(contentsOf: [

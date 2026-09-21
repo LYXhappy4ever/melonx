@@ -1,0 +1,116 @@
+name: MeloNX 2.6 AB0 unsigned IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - ab0-test-2.6
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  XCODE_PROJECT: src/MeloNX/MeloNX.xcodeproj
+  XCODE_SCHEME: MeloNX
+  XCODE_CONFIGURATION: Release
+  DERIVED_DATA_PATH: build/DerivedData
+  IPA_OUTPUT_DIR: build/ipa
+  IPA_FILENAME: MeloNX-2.6-ABOFF-Test1.ipa
+
+jobs:
+  build:
+    name: Build MeloNX 2.6 AB0
+    runs-on: macos-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Select newest Xcode
+        shell: bash
+        run: |
+          set -euo pipefail
+          selected_xcode="$(find /Applications -maxdepth 1 -name 'Xcode*.app' -print | sort -V | tail -n 1)"
+          test -n "$selected_xcode"
+          sudo xcode-select -s "$selected_xcode/Contents/Developer"
+          xcodebuild -version
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Install .NET iOS workload
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet --info
+          dotnet workload install ios
+
+      - name: Build Ryujinx.Library for iOS
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash distribution/ios/build.sh
+          test -f src/Ryujinx.Library/bin/Release/net10.0/ios-arm64/native/Ryujinx.Library.dylib
+
+      - name: Build unsigned MeloNX app
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf "$DERIVED_DATA_PATH"
+          xcodebuild \
+            -project "$XCODE_PROJECT" \
+            -scheme "$XCODE_SCHEME" \
+            -configuration "$XCODE_CONFIGURATION" \
+            -sdk iphoneos \
+            -destination "generic/platform=iOS" \
+            -derivedDataPath "$DERIVED_DATA_PATH" \
+            clean build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
+            AD_HOC_CODE_SIGNING_ALLOWED=YES \
+            ONLY_ACTIVE_ARCH=NO
+
+      - name: Verify and package IPA
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          app_path="$(find "$DERIVED_DATA_PATH/Build/Products/${XCODE_CONFIGURATION}-iphoneos" -maxdepth 1 -name 'MeloNX.app' -type d -print -quit)"
+          test -n "$app_path"
+          test -d "$app_path"
+
+          bundle_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app_path/Info.plist")"
+          display_name="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "$app_path/Info.plist")"
+          version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app_path/Info.plist")"
+
+          test "$bundle_id" = "com.stossy11.MeloNX"
+          test "$display_name" = "MeloNX AB0"
+          test "$version" = "2.6"
+
+          rm -rf "$IPA_OUTPUT_DIR"
+          mkdir -p "$IPA_OUTPUT_DIR/Payload"
+          ditto "$app_path" "$IPA_OUTPUT_DIR/Payload/MeloNX.app"
+
+          (
+            cd "$IPA_OUTPUT_DIR"
+            zip -qry "$IPA_FILENAME" Payload
+          )
+
+          test -f "$IPA_OUTPUT_DIR/$IPA_FILENAME"
+          shasum -a 256 "$IPA_OUTPUT_DIR/$IPA_FILENAME"
+          ls -lh "$IPA_OUTPUT_DIR/$IPA_FILENAME"
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: MeloNX-2.6-ABOFF-Test1
+          path: ${{ env.IPA_OUTPUT_DIR }}/${{ env.IPA_FILENAME }}
+          if-no-files-found: error
