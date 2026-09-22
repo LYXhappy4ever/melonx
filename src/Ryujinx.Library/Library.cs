@@ -177,6 +177,35 @@ namespace Ryujinx.Library
             _emulationContext?.SetUnboundedPresentTargetFps(targetFps);
         }
 
+        [UnmanagedCallersOnly(EntryPoint = "set_turbo_state")]
+        public static void SetTurboState(bool enabled, int tickScalar)
+        {
+            if (_emulationContext == null)
+            {
+                return;
+            }
+
+            if (!enabled)
+            {
+                _emulationContext.SetTurboState(false, ITickSource.RealityTickScalar);
+                return;
+            }
+
+            try
+            {
+                const ulong Danganronpa2TitleId = 0x01000D20140F0000UL;
+
+                if (_emulationContext.Processes.ActiveApplication.ProgramId == Danganronpa2TitleId)
+                {
+                    _emulationContext.SetTurboState(true, tickScalar);
+                }
+            }
+            catch (Ryujinx.Common.RyujinxException)
+            {
+                // The application process may not exist yet while starting or shutting down.
+            }
+        }
+
         [UnmanagedCallersOnly(EntryPoint = "stop_emulation")]
         public static void StopEmulation()
         {

@@ -152,8 +152,13 @@ namespace Ryujinx.HLE
 
         public void ToggleTurbo()
         {
-            TurboMode = !TurboMode;
-            TickScalar = TurboMode ? Configuration.TickScalar : ITickSource.RealityTickScalar;
+            SetTurboState(!TurboMode, Configuration.TickScalar);
+        }
+
+        public void SetTurboState(bool enabled, long tickScalar)
+        {
+            TurboMode = enabled;
+            TickScalar = enabled ? Math.Max(tickScalar, ITickSource.RealityTickScalar) : ITickSource.RealityTickScalar;
         }
 
         public bool LoadCart(string exeFsDir, string romFsFile = null) => Processes.LoadUnpackedNca(exeFsDir, romFsFile);

@@ -150,10 +150,15 @@ class NativeController: BaseController {
         button.valueChangedHandler = { [weak self] _, _, pressed in
             guard let self else { return }
             setButtonState(pressed ? 1 : 0, for: key == .left ? .leftTrigger : .rightTrigger)
+
+            if key == .left {
+                Ryujinx.setTurboState(pressed, tickScalar: 300)
+            }
         }
     }
     
     override func cleanup() {
+        Ryujinx.setTurboState(false, tickScalar: 300)
         clearInputHandlers()
 
         super.cleanup()

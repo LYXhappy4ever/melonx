@@ -234,6 +234,10 @@ final class Ryujinx {
         toggle_pause_emulation(pause)
     }
 
+    static func setTurboState(_ enabled: Bool, tickScalar: Int32 = 300) {
+        set_turbo_state(enabled, tickScalar)
+    }
+
     /*
     static func initialize_dualmapped() -> Bool {
         MeloNX.initialize_dualmapped()
@@ -477,6 +481,9 @@ fileprivate func close_user(_ userid: UnsafePointer<CChar>!)
 
 @_silgen_name("toggle_pause_emulation")
 fileprivate func toggle_pause_emulation(_ shouldPause: Bool)
+
+@_silgen_name("set_turbo_state")
+fileprivate func set_turbo_state(_ enabled: Bool, _ tickScalar: Int32)
 
 
 // installed_firmware_version
