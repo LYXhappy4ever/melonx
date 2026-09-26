@@ -159,6 +159,12 @@ jobs:
           chmod 755 "$app_path/Frameworks/Ryujinx.Headless.SDL2.dylib"
           test -f "$app_path/Frameworks/Ryujinx.Headless.SDL2.dylib"
 
+          entitlements="$PWD/src/MeloNX/MeloNX/MeloNX.entitlements"
+          codesign --force --sign - "$app_path/Frameworks/Ryujinx.Headless.SDL2.dylib"
+          codesign --force --deep --sign - --entitlements "$entitlements" "$app_path"
+          codesign -d --entitlements :- "$app_path" > build/MeloNX-embedded-entitlements.plist
+          /usr/libexec/PlistBuddy -c "Print :com.apple.developer.kernel.increased-memory-limit" build/MeloNX-embedded-entitlements.plist | grep -q true
+
           rm -rf "$IPA_OUTPUT_DIR"
           mkdir -p "$IPA_OUTPUT_DIR/Payload"
           ditto "$app_path" "$IPA_OUTPUT_DIR/Payload/MeloNX.app"
