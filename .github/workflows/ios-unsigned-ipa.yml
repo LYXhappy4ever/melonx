@@ -105,6 +105,9 @@ jobs:
             DEVELOPMENT_TEAM="" \
             AD_HOC_CODE_SIGNING_ALLOWED=YES \
             ONLY_ACTIVE_ARCH=NO \
+            PRODUCT_BUNDLE_IDENTIFIER=com.stossy11.MeloNX \
+            MARKETING_VERSION=2.6 \
+            CURRENT_PROJECT_VERSION=1 \
             "LIBRARY_SEARCH_PATHS=\$(inherited) $libdeps" \
             "OTHER_LDFLAGS=\$(inherited) $libdeps/Ryujinx.Headless.SDL2.dylib"
 
@@ -138,6 +141,9 @@ jobs:
             echo "MeloNX.app was not produced" >&2
             exit 1
           fi
+
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app_path/Info.plist")" = "com.stossy11.MeloNX"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app_path/Info.plist")" = "2.6"
 
           ryujinx_dylib="$PWD/src/MeloNX/MeloNX/Dependencies/Dynamic Libraries/Ryujinx.Headless.SDL2.dylib"
           if [ ! -f "$ryujinx_dylib" ]; then
