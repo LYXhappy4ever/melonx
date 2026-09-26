@@ -16,12 +16,19 @@ class NativeController: BaseController {
     }
     
     var count = 0
+
+    private var leftStickButtonPressed = false
+    private var rightStickButtonPressed = false
+    private var fastForwardComboLatched = false
     
     override public func setupController() {
         guard let gamepad = nativeController?.extendedGamepad
         else { return }
         
         nativeController?.handlerQueue = inputQueue
+        leftStickButtonPressed = false
+        rightStickButtonPressed = false
+        fastForwardComboLatched = false
         
         setupButtonChangeListener(gamepad.buttonA, for: UserDefaults.standard.bool(forKey: "swapBandA") ? .B : .A)
         setupButtonChangeListener(gamepad.buttonB, for: UserDefaults.standard.bool(forKey: "swapBandA") ? .A : .B)
@@ -35,8 +42,8 @@ class NativeController: BaseController {
 
         setupButtonChangeListener(gamepad.leftShoulder, for: .leftShoulder)
         setupButtonChangeListener(gamepad.rightShoulder, for: .rightShoulder)
-        gamepad.leftThumbstickButton.map { setupButtonChangeListener($0, for: .leftStick) }
-        gamepad.rightThumbstickButton.map { setupButtonChangeListener($0, for: .rightStick) }
+        gamepad.leftThumbstickButton.map { setupStickButtonChangeListener($0, for: .leftStick, isLeft: true) }
+        gamepad.rightThumbstickButton.map { setupStickButtonChangeListener($0, for: .rightStick, isLeft: false) }
 
         setupButtonChangeListener(gamepad.buttonMenu, for: .start)
         gamepad.buttonOptions.map { setupButtonChangeListener($0, for: .back) }
@@ -69,6 +76,29 @@ class NativeController: BaseController {
     func setupButtonChangeListener(_ button: GCControllerButtonInput, for key: VirtualControllerButton) {
         button.valueChangedHandler = { [unowned self] _, _, pressed in
             setButtonState(pressed ? 1 : 0, for: key)
+        }
+    }
+
+    func setupStickButtonChangeListener(_ button: GCControllerButtonInput, for key: VirtualControllerButton, isLeft: Bool) {
+        button.valueChangedHandler = { [unowned self] _, _, pressed in
+            setButtonState(pressed ? 1 : 0, for: key)
+
+            if isLeft {
+                leftStickButtonPressed = pressed
+            } else {
+                rightStickButtonPressed = pressed
+            }
+
+            let comboPressed = leftStickButtonPressed && rightStickButtonPressed
+            if comboPressed && !fastForwardComboLatched {
+                fastForwardComboLatched = true
+                DispatchQueue.main.async {
+                    guard Ryujinx.shared.isRunning else { return }
+                    Ryujinx.shared.toggleFastForward()
+                }
+            } else if !comboPressed {
+                fastForwardComboLatched = false
+            }
         }
     }
 

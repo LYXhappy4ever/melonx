@@ -69,6 +69,10 @@ final class RyujinxBridge {
             Int(SN_update_settings_external(argc, cStrings))
         }
     }
+
+    static func setDeviceVSync(_ enabled: Bool) -> Bool {
+        SN_set_device_vsync(enabled ? 1 : 0) == 0
+    }
     
     static func setViewSize(width: Int, height: Int) {
         SN_set_view_size(Int32(width), Int32(height))
@@ -203,6 +207,9 @@ func SN_set_gamepad_configuration(_ argc: Int32, _ argv: UnsafeMutablePointer<Un
 
 @_silgen_name("update_settings_external")
 func SN_update_settings_external(_ argc: Int32, _ argv: UnsafeMutablePointer<UnsafeMutablePointer<CChar>?>!) -> Int32
+
+@_silgen_name("set_device_vsync")
+func SN_set_device_vsync(_ enabled: Int32) -> Int32
 
 @_silgen_name("get_current_fps")
 func SN_get_current_fps() -> Int32

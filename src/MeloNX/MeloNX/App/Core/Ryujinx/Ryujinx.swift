@@ -49,6 +49,8 @@ class Ryujinx : ObservableObject {
     @Published var config: Ryujinx.Arguments? = nil
     @Published var games: [Game] = []
     @Published var aspectRatio: AspectRatio = .fixed16x9
+    @Published private(set) var fastForwardEnabled = false
+    private var fastForwardBaseDisableVsync = false
     
     // Classes
     let controllerManager = ControllerManager.shared
@@ -68,6 +70,37 @@ class Ryujinx : ObservableObject {
     
     func runloop(_ cool: @escaping () -> Void) {
         runner.start(cool)
+    }
+
+    func toggleFastForward() {
+        _ = setFastForward(!fastForwardEnabled)
+    }
+
+    @discardableResult
+    func setFastForward(_ enabled: Bool) -> Bool {
+        guard isRunning, let config else {
+            return false
+        }
+
+        if enabled && !fastForwardEnabled {
+            fastForwardBaseDisableVsync = config.disablevsync
+        }
+
+        let shouldDisableVsync = enabled || fastForwardBaseDisableVsync
+        guard RyujinxBridge.setDeviceVSync(!shouldDisableVsync) else {
+            print("[FastForward] Failed to update runtime VSync state")
+            return false
+        }
+
+        fastForwardEnabled = enabled
+        let mode = enabled ? "FAST (VSync off)" : "NORMAL (restored base VSync)"
+        print("[FastForward] \(mode)")
+        return true
+    }
+
+    private func resetFastForwardRuntimeState(using config: Arguments?) {
+        fastForwardEnabled = false
+        fastForwardBaseDisableVsync = config?.disablevsync ?? false
     }
     
     
@@ -133,6 +166,7 @@ class Ryujinx : ObservableObject {
         
         
         self.config = config
+        resetFastForwardRuntimeState(using: config)
         
         self.isRunning = true
         
@@ -298,6 +332,10 @@ class Ryujinx : ObservableObject {
             throw RyujinxError.notRunning
         }
         
+        if fastForwardEnabled {
+            _ = setFastForward(false)
+        }
+        resetFastForwardRuntimeState(using: config)
         isRunning = false
         
         UserDefaults.standard.set(false, forKey: "lockInApp")

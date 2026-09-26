@@ -2058,6 +2058,32 @@ namespace Ryujinx.Headless.SDL2
             Encoding.UTF8.GetBytes(source, span);
         }
 
+        [UnmanagedCallersOnly(EntryPoint = "set_device_vsync")]
+        public static int SetDeviceVsync(int enabled)
+        {
+            if (_emulationContext == null || _window?.Renderer?.Window == null)
+            {
+                return -1;
+            }
+
+            bool vsyncEnabled = enabled != 0;
+            _emulationContext.EnableDeviceVsync = vsyncEnabled;
+
+            WindowBase.QueueMainThreadAction(() =>
+            {
+                if (_window?.Renderer?.Window != null)
+                {
+                    _window.Renderer.Window.ChangeVSyncMode(vsyncEnabled);
+                }
+            });
+
+            Logger.Info?.Print(
+                LogClass.Application,
+                $"Runtime VSync {(vsyncEnabled ? "ON" : "OFF")}");
+
+            return 0;
+        }
+
         [UnmanagedCallersOnly(EntryPoint = "update_settings_external")]
         public static unsafe int UpdateSettingsExternal(int argCount, IntPtr* pArgs)
         {
