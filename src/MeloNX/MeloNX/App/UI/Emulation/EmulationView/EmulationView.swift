@@ -97,7 +97,7 @@ struct EmulationView: View {
         }
         .overlay(alignment: .topLeading) {
             if ryujinx.fastForwardEnabled {
-                Text("FAST")
+                Text("FAST 3×")
                     .font(.caption.bold())
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)

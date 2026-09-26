@@ -87,13 +87,21 @@ class Ryujinx : ObservableObject {
         }
 
         let shouldDisableVsync = enabled || fastForwardBaseDisableVsync
+        let targetScale = enabled ? 3.0 : 1.0
+
+        guard RyujinxBridge.setGuestTimeScale(targetScale) else {
+            print("[FastForward] Failed to update guest time scale")
+            return false
+        }
+
         guard RyujinxBridge.setDeviceVSync(!shouldDisableVsync) else {
+            _ = RyujinxBridge.setGuestTimeScale(enabled ? 1.0 : 3.0)
             print("[FastForward] Failed to update runtime VSync state")
             return false
         }
 
         fastForwardEnabled = enabled
-        let mode = enabled ? "FAST (VSync off)" : "NORMAL (restored base VSync)"
+        let mode = enabled ? "FAST 3x (guest clock 3x, VSync off)" : "NORMAL 1x"
         print("[FastForward] \(mode)")
         return true
     }

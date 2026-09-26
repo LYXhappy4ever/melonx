@@ -73,6 +73,10 @@ final class RyujinxBridge {
     static func setDeviceVSync(_ enabled: Bool) -> Bool {
         SN_set_device_vsync(enabled ? 1 : 0) == 0
     }
+
+    static func setGuestTimeScale(_ scale: Double) -> Bool {
+        SN_set_guest_time_scale(scale) == 0
+    }
     
     static func setViewSize(width: Int, height: Int) {
         SN_set_view_size(Int32(width), Int32(height))
@@ -210,6 +214,9 @@ func SN_update_settings_external(_ argc: Int32, _ argv: UnsafeMutablePointer<Uns
 
 @_silgen_name("set_device_vsync")
 func SN_set_device_vsync(_ enabled: Int32) -> Int32
+
+@_silgen_name("set_guest_time_scale")
+func SN_set_guest_time_scale(_ scale: Double) -> Int32
 
 @_silgen_name("get_current_fps")
 func SN_get_current_fps() -> Int32

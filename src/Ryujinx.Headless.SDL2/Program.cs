@@ -2084,6 +2084,23 @@ namespace Ryujinx.Headless.SDL2
             return 0;
         }
 
+        [UnmanagedCallersOnly(EntryPoint = "set_guest_time_scale")]
+        public static int SetGuestTimeScale(double scale)
+        {
+            if (double.IsNaN(scale) || double.IsInfinity(scale) || scale < 0.25 || scale > 8.0)
+            {
+                return -1;
+            }
+
+            TickSource.SetTimeScale(scale);
+
+            Logger.Info?.Print(
+                LogClass.Application,
+                $"Guest time scale set to {scale:0.##}x");
+
+            return 0;
+        }
+
         [UnmanagedCallersOnly(EntryPoint = "update_settings_external")]
         public static unsafe int UpdateSettingsExternal(int argCount, IntPtr* pArgs)
         {
