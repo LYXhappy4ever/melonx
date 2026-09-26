@@ -95,6 +95,18 @@ struct EmulationView: View {
                 .allowsHitTesting(false)
             }
         }
+        .overlay(alignment: .topLeading) {
+            if ryujinx.fastForwardEnabled {
+                Text("FAST")
+                    .font(.caption.bold())
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(.black.opacity(0.65))
+                    .clipShape(Capsule())
+                    .padding()
+                    .allowsHitTesting(false)
+            }
+        }
         .overlay(alignment: .topTrailing) {
             if ProcessInfo.processInfo.isLowPowerModeEnabled {
                 Circle()

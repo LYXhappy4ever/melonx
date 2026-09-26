@@ -10,6 +10,12 @@ namespace Ryujinx.Input.Native
     public class NativeGamepadDriver : IGamepadDriver
     {
         private static NativeGamepadDriver _instance;
+
+        // Swift GCController objects outlive individual emulation sessions, while
+        // NativeGamepadDriver is recreated for each Ryujinx session. Keep a small
+        // process-wide registry so a newly created driver can restore controllers
+        // that are still physically connected.
+        private static readonly ConcurrentDictionary<IntPtr, string> _registeredGamepads = new();
         
         private readonly ConcurrentDictionary<IntPtr, NativeGamepad> _gamepads;
         
@@ -37,28 +43,56 @@ namespace Ryujinx.Input.Native
             _gamepads = new ConcurrentDictionary<IntPtr, NativeGamepad>();
             _gamepadIds = new List<string>();
             _instance = this;
+
+            foreach ((IntPtr idPtr, string name) in _registeredGamepads)
+            {
+                AddGamepadToCurrentInstance(name, idPtr, notify: false);
+            }
+        }
+
+        private static bool AddGamepadToCurrentInstance(string name, IntPtr idPtr, bool notify)
+        {
+            if (_instance == null || string.IsNullOrEmpty(name) || idPtr == IntPtr.Zero)
+            {
+                return false;
+            }
+
+            string idString = idPtr.ToInt64().ToString("X");
+            NativeGamepad gamepad = new NativeGamepad(name, idString);
+
+            if (!_instance._gamepads.TryAdd(idPtr, gamepad))
+            {
+                gamepad.Dispose();
+                return false;
+            }
+
+            lock (_idLock)
+            {
+                if (!_instance._gamepadIds.Contains(idString))
+                {
+                    _instance._gamepadIds.Add(idString);
+                }
+            }
+
+            if (notify)
+            {
+                _instance.OnGamepadConnected?.Invoke(idString);
+            }
+
+            return true;
         }
 
         public static IntPtr AttachGamepad(string name, IntPtr idPtr)
         {
             try
             {
-                if (_instance != null && !string.IsNullOrEmpty(name) && idPtr != IntPtr.Zero)
+                if (string.IsNullOrEmpty(name) || idPtr == IntPtr.Zero)
                 {
-                    // Convert to hex string once during connection only
-                    string idString = idPtr.ToInt64().ToString("X");
-
-                    NativeGamepad gamepad = new NativeGamepad(name, idString);
-                    
-                    if (_instance._gamepads.TryAdd(idPtr, gamepad))
-                    {
-                        lock (_idLock)
-                        {
-                            _instance._gamepadIds.Add(idString);
-                        }
-                        _instance.OnGamepadConnected?.Invoke(idString);
-                    }
+                    return IntPtr.Zero;
                 }
+
+                _registeredGamepads[idPtr] = name;
+                AddGamepadToCurrentInstance(name, idPtr, notify: true);
 
                 return idPtr;
             }
@@ -72,7 +106,14 @@ namespace Ryujinx.Input.Native
         {
             try
             {
-                if (_instance != null && idPtr != IntPtr.Zero)
+                if (idPtr == IntPtr.Zero)
+                {
+                    return;
+                }
+
+                _registeredGamepads.TryRemove(idPtr, out _);
+
+                if (_instance != null)
                 {
                     if (_instance._gamepads.TryRemove(idPtr, out NativeGamepad gamepad))
                     {
