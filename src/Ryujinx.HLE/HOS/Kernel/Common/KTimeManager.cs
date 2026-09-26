@@ -47,21 +47,29 @@ namespace Ryujinx.HLE.HOS.Kernel.Common
 
         public void ScheduleFutureInvocation(IKFutureSchedulerObject schedulerObj, long timeout)
         {
+            double timeScale = Ryujinx.Cpu.TickSource.TimeScale;
+            long effectiveTimeout = timeout;
+
+            if (timeScale > 1.0 && timeout > 0)
+            {
+                effectiveTimeout = Math.Max(1L, (long)Math.Ceiling(timeout / timeScale));
+            }
+
             long startTime = PerformanceCounter.ElapsedTicks;
-            long timePoint = startTime + ConvertNanosecondsToHostTicks(timeout);
+            long timePoint = startTime + ConvertNanosecondsToHostTicks(effectiveTimeout);
 
             if (timePoint < startTime)
             {
                 timePoint = long.MaxValue;
             }
 
-            timePoint = _waitEvent.AdjustTimePoint(timePoint, timeout);
+            timePoint = _waitEvent.AdjustTimePoint(timePoint, effectiveTimeout);
 
             lock (_context.CriticalSection.Lock)
             {
                 _waitingObjects.Add(new WaitingObject(schedulerObj, timePoint));
 
-                if (timeout < NanosecondsPerMillisecond)
+                if (effectiveTimeout < NanosecondsPerMillisecond)
                 {
                     Interlocked.Exchange(ref _enforceWakeupFromSpinWait, 1);
                 }
